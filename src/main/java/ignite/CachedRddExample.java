@@ -6,6 +6,8 @@ import org.apache.ignite.cache.affinity.rendezvous.RendezvousAffinityFunction;
 import org.apache.ignite.configuration.CacheConfiguration;
 import org.apache.ignite.spark.IgniteContext;
 import org.apache.ignite.spark.IgniteRDD;
+import org.apache.log4j.Level;
+import org.apache.log4j.Logger;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -26,6 +28,9 @@ public class CachedRddExample {
 
     private void run() throws Exception {
 
+        Logger.getLogger("org").setLevel(Level.ERROR);
+        Logger.getLogger("akka").setLevel(Level.ERROR);
+
         // Create SparkContext and load data from Parquet
         final SparkConf sparkConf = new SparkConf()
                 .setAppName("shared-rdd-example")
@@ -41,6 +46,7 @@ public class CachedRddExample {
             final IgniteCache<String, StructType> rddSchemaCache = igniteContext.ignite().createCache(schemaCacheConfig);
 
             for (int i = 0; i < 1000; i++) {
+                System.out.println(i + " ======================================");
                 final String schemaCacheName = "outpatient-schema";
                 final long t0 = System.currentTimeMillis();
                 rddSchemaCache.put(schemaCacheName, df.schema());
