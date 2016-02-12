@@ -40,30 +40,38 @@ public class CachedRddExample {
             final CacheConfiguration<String, StructType> schemaCacheConfig = makeSchemaCacheConfig("rdd-schema-cache");
             final IgniteCache<String, StructType> rddSchemaCache = igniteContext.ignite().createCache(schemaCacheConfig);
 
-            final String schemaCacheName = "outpatient-schema";
-            final long t0 = System.currentTimeMillis();
-            rddSchemaCache.put(schemaCacheName, df.schema());
-            System.out.println("DataFrame schema cached in " + (System.currentTimeMillis() - t0) + "ms");
+            for (int i = 0; i < 1000; i++) {
+                final String schemaCacheName = "outpatient-schema";
+                final long t0 = System.currentTimeMillis();
+                rddSchemaCache.put(schemaCacheName, df.schema());
+                System.out.println("DataFrame schema cached in " + (System.currentTimeMillis() - t0) + "ms");
 
-            final String rddCacheName = "outpatient-rdd";
-            final IgniteRDD igniteRDD = igniteContext.fromCache(rddCacheName);
-            final long t1 = System.currentTimeMillis();
-            igniteRDD.saveValues(df.rdd());
-            System.out.println("RDD cached in " + (System.currentTimeMillis() - t1) + "ms");
+                final String rddCacheName = "outpatient-rdd";
+                final IgniteRDD igniteRDD = igniteContext.fromCache(rddCacheName);
 
+                final long t = System.currentTimeMillis();
+                df.rdd().count();
+                System.out.println("DataFrame to RDD " + (System.currentTimeMillis() - t) + "ms");
 
-            final long t2 = System.currentTimeMillis();
-            final JavaRDD javaRDD = igniteRDD.toJavaRDD().map(a -> ((Tuple2) a)._2());
-            System.out.println("RDD retrieved in " + (System.currentTimeMillis() - t2) + "ms");
+                final long t1 = System.currentTimeMillis();
+                igniteRDD.saveValues(df.rdd());
+                System.out.println("RDD cached in " + (System.currentTimeMillis() - t1) + "ms");
 
-            final long t3 = System.currentTimeMillis();
-            final StructType rddSchema = rddSchemaCache.get(schemaCacheName);
-            final DataFrame dataFrameFromCache = sqlContext.createDataFrame(javaRDD, rddSchema);
-            System.out.println("DataFrame schema retrieved in " + (System.currentTimeMillis() - t3) + "ms");
+                final long t2 = System.currentTimeMillis();
+                final JavaRDD javaRDD = igniteRDD.toJavaRDD().map(a -> ((Tuple2)a)._2());
+                System.out.println("RDD retrieved in " + (System.currentTimeMillis() - t2) + "ms");
 
-            final long t4 = System.currentTimeMillis();
-            dataFrameFromCache.collect();
-            System.out.println("DataFrame collected in "  + (System.currentTimeMillis() - t4) + "ms");
+                final long t3 = System.currentTimeMillis();
+                final StructType rddSchema = rddSchemaCache.get(schemaCacheName);
+                final DataFrame dataFrameFromCache = sqlContext.createDataFrame(javaRDD, rddSchema);
+                System.out.println("DataFrame schema retrieved in " + (System.currentTimeMillis() - t3) + "ms");
+
+                final long t4 = System.currentTimeMillis();
+                dataFrameFromCache.collect();
+                System.out.println("DataFrame collected in " + (System.currentTimeMillis() - t4) + "ms");
+
+                igniteContext.ignite().cache(rddCacheName).clear();
+            }
         } finally {
             igniteContext.ignite().close();
         }
